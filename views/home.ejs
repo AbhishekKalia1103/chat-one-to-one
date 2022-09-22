@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.socket.io/socket.io-3.0.1.min.js"> </script>
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
+</head>
+
+<body>
+    <form onsubmit="return enterName()">
+        <input id="name" placeholder="Enter name">
+        <input type="submit">
+    </form>
+
+    <ul id="users"></ul>
+
+    <form onsubmit="return sendMessage()">
+        <input id="message" placeholder="Enter message">
+        <input type="submit">
+    </form>
+
+    <ul id="messages"></ul>
+    <script>
+        //creating io instance
+        var io = io("http://localhost:3000");
+
+        var reciever = "";
+        var sender = "";
+
+        function enterName() {
+            var name = document.getElementById("name").value;
+
+            io.emit("user_connected", name);
+
+            sender = name;
+
+            return false;
+        }
+
+        io.on("user_connected", function (username) {
+            var html = "";
+            html += "<li><button onclick='onUserSelected(this.innerHTML);'>" + username + "</button></li>";
+
+            document.getElementById("users").innerHTML += html;
+        });
+
+        function onUserSelected(username) {
+            reciever = username;
+
+            $.ajax({
+                url: "http://localhost:3000/get_messages",
+                method: "POST",
+                data: {
+                    sender: sender,
+                    reciever: reciever,
+                },
+                success: function (response) {
+                    console.log(response);
+                    var messages = JSON.parse(response);
+                    var html = "";
+
+                    for (var a = 0; a < messages.length; a++) {
+                        html += "<li>" + messages[a].sender + " says: " + messages[a].message + "</li>";
+                    }
+
+                    // append in list
+                    document.getElementById("messages").innerHTML += html;
+                }
+            })
+        }
+
+        function sendMessage() {
+            var message = document.getElementById("message").value;
+
+            io.emit("send_message", {
+                sender: sender,
+                reciever: reciever,
+                message: message
+            });
+
+            var html = "";
+            html += "<li>You said: " + message + "</li>";
+
+            document.getElementById("messages").innerHTML += html;
+
+            return false;
+        }
+
+        io.on("new_message", function (data) {
+            var html = "";
+            html += "<li>" + data.sender + " says: " + data.message + "</li>";
+
+            document.getElementById("messages").innerHTML += html;
+        });
+    </script>
+</body>
+
+</html>
